@@ -48,7 +48,7 @@ h2{font-size:15px;font-weight:500}
 .grid2{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px}
 @media (max-width:820px){.grid2{grid-template-columns:minmax(0,1fr)}}
 .panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
-.daynav{display:flex;align-items:center;gap:6px}
+.daynav{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .btn{font:inherit;font-size:13px;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:9px;padding:7px 12px;cursor:pointer}
 .btn:hover{border-color:var(--muted)}
 .btn:disabled{opacity:.4;cursor:default}
@@ -166,6 +166,17 @@ label.btn{display:inline-flex;align-items:center}
 label.btn:focus-within{outline:2px solid var(--focus);outline-offset:2px}
 .trend{width:100%;height:auto;display:block}
 .trend text{font-family:var(--f-num);font-size:10px;fill:var(--muted)}
+/* ---- bo'limlar va taymer ---- */
+.tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);padding-bottom:10px}
+.tabs .chip{font-variant-numeric:tabular-nums}
+.view{display:flex;flex-direction:column;gap:18px;min-width:0}
+.view[hidden]{display:none}
+.timer{display:flex;flex-direction:column;align-items:center;gap:16px;width:100%;max-width:460px;margin:0 auto;text-align:center}
+.ring{width:min(260px,72vw);height:auto}
+.ring text{font-family:var(--f-num);fill:var(--ink)}
+.timer .chips,.timer-actions{justify-content:center}
+.timer-actions{display:flex;gap:10px;flex-wrap:wrap}
+.timer-actions .btn{font-size:15px;padding:10px 22px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
@@ -178,6 +189,38 @@ label.btn:focus-within{outline:2px solid var(--focus);outline-offset:2px}
     <div class="sync" id="sync"><i></i><span>Yuklanmoqda…</span></div>
   </header>
 
+  <nav class="tabs" aria-label="Bo'limlar">
+    <button class="chip on" id="tabPlan" aria-pressed="true">📋 Reja</button>
+    <button class="chip" id="tabTimer" aria-pressed="false">⏱ Taymer</button>
+  </nav>
+
+  <div id="viewTimer" class="view" hidden>
+    <section class="panel" aria-labelledby="timerTitle">
+      <div class="timer">
+        <h2 id="timerTitle">Pomodoro taymeri</h2>
+        <div class="chips" id="timerChips">
+          <button class="chip" data-min="20">20 daqiqa</button>
+          <button class="chip" data-min="30">30 daqiqa</button>
+          <button class="chip" data-min="60">1 soat</button>
+        </div>
+        <svg class="ring" viewBox="0 0 200 200" role="img" aria-label="Taymer">
+          <circle cx="100" cy="100" r="88" fill="none" stroke="var(--empty)" stroke-width="12" opacity=".45"/>
+          <circle id="timerArc" cx="100" cy="100" r="88" fill="none" stroke="var(--blue)" stroke-width="12" transform="rotate(-90 100 100)"/>
+          <text id="timerText" x="100" y="113" text-anchor="middle" font-size="40">20:00</text>
+        </svg>
+        <div class="timer-actions">
+          <button class="btn primary" id="timerStart">▶ Boshlash</button>
+          <button class="btn" id="timerReset">↺ Qaytadan</button>
+        </div>
+        <p class="empty-note" id="timerMsg" role="status"></p>
+        <p class="empty-note" id="wakeNote" role="status"></p>
+        <p class="empty-note">Vaqt tugaganda ovoz chiqadi. Ilova ekranda ochiq tursin.</p>
+      </div>
+    </section>
+  </div>
+
+  <div id="viewPlan" class="view">
+  <div class="chips" id="planChips" role="group" aria-label="Rejalar"></div>
   <div id="endBanner" class="banner" hidden>
     <span id="endText">30 kun tugadi. Natijalaringiz pastda saqlangan.</span>
     <button class="btn primary" id="newCycle">Yangi 30 kun boshlash</button>
@@ -188,6 +231,8 @@ label.btn:focus-within{outline:2px solid var(--focus);outline-offset:2px}
       <h2 id="sheetTitle">30 kunlik varaq</h2>
       <div class="daynav">
         <span class="eyebrow">Doirani bosing: zangor → qizil → bo'sh</span>
+        <button class="btn icon" id="undoBtn" title="Bekor qilish (Ctrl+Z)" aria-label="Bekor qilish" disabled>↶</button>
+        <button class="btn icon" id="redoBtn" title="Qaytarish (Ctrl+Y)" aria-label="Qaytarish" disabled>↷</button>
         <button class="btn" id="editPlan">✎ Rejani tahrirlash</button>
       </div>
     </div>
@@ -240,6 +285,9 @@ label.btn:focus-within{outline:2px solid var(--focus);outline-offset:2px}
 
   <section class="panel" aria-labelledby="setTitle">
     <div class="panel-head"><h2 id="setTitle">Sozlamalar</h2><span class="eyebrow">Ishlar, miqdorlar va muddat</span></div>
+    <label class="custom-days" style="margin-bottom:14px">Reja nomi:
+      <input type="text" id="planName" maxlength="40" style="flex:1;max-width:320px">
+    </label>
     <div class="shead"><span></span><span>Ish nomi</span><span>Kunlik</span><span>Birlik</span><span></span></div>
     <div class="settings-list" id="settingsList"></div>
     <p class="empty-note" style="margin-top:8px">Kunlik miqdor bo'lmasa (masalan, erta turish), "Kunlik"ni bo'sh qoldiring: u ish shunchaki qildim/qilmadim bilan hisoblanadi.</p>
@@ -258,6 +306,12 @@ label.btn:focus-within{outline:2px solid var(--focus);outline-offset:2px}
     </div>
     <div class="sfoot">
       <button class="btn danger" id="resetBtn">Belgilarni tozalash</button>
+      <button class="btn danger" id="delPlanBtn">Shu rejani o'chirish</button>
+    </div>
+    <div id="delPlanBox" class="confirm" hidden>
+      <span id="delPlanText"></span>
+      <button class="btn danger" id="delPlanYes">Ha, o'chirish</button>
+      <button class="btn" id="delPlanNo">Bekor qilish</button>
     </div>
     <div id="confirmBox" class="confirm" hidden>
       <span>Barcha belgilar va miqdorlar o'chadi. Davom etasizmi?</span>
@@ -280,11 +334,12 @@ label.btn:focus-within{outline:2px solid var(--focus);outline-offset:2px}
       </div>
     </div>
   </section>
+  </div>
 </div>
 
 <script>
 (function(){
-  let DAYS = 30; const MAX_HABITS = 10, SHAPE_COUNT = 10, PRESETS = [7,10,14,20,21,30,40,60,90];
+  let DAYS = 30; const MAX_HABITS = 20, SHAPE_COUNT = 10, PRESETS = [7,10,14,20,21,30,40,60,90];
   const LS_KEY = "odatlar30.v1";
   const MONTHS = ["yanvar","fevral","mart","aprel","may","iyun","iyul","avgust","sentabr","oktabr","noyabr","dekabr"];
   const MON3 = ["yan","fev","mar","apr","may","iyn","iyl","avg","sen","okt","noy","dek"];
@@ -305,11 +360,20 @@ label.btn:focus-within{outline:2px solid var(--focus);outline-offset:2px}
         {id:uid(), name:"Ingliz tili", target:30, unit:"daqiqa", shape:4},
         {id:uid(), name:"Kechki rejani yozish", target:0, unit:"", shape:5}
       ],
-      marks: {}, amounts: {}, days: 30
+      marks: {}, amounts: {}, days: 30, name: "1-reja", others: [], pos: 0
     };
   }
   const OLD = {"Sport, 30 daqiqa":["Sport",30,"daqiqa"],"Kitob o'qish, 20 bet":["Kitob o'qish",20,"bet"],"2 litr suv ichish":["Suv ichish",2,"litr"],"Ingliz tili, 30 daqiqa":["Ingliz tili",30,"daqiqa"]};
+  // Faol reja yuqori darajada (eski format), qolganlari others ichida; pos: faol rejaning tartib o'rni
   function normalize(s){
+    normalizePlan(s);
+    s.others = Array.isArray(s.others) ? s.others.filter(valid).map(normalizePlan) : [];
+    s.pos = Math.max(0, Math.min(s.others.length, Math.round(Number(s.pos)) || 0));
+    if (!s.name) s.name = "1-reja";
+    s.others.forEach((p,i) => { if (!p.name) p.name = (i+2)+"-reja"; });
+    return s;
+  }
+  function normalizePlan(s){
     if (!s.amounts || typeof s.amounts!=="object") s.amounts = {};
     s.days = Math.round(Number(s.days));
     if (!(s.days>=1 && s.days<=120)) s.days = 30;
@@ -320,12 +384,13 @@ label.btn:focus-within{outline:2px solid var(--focus);outline-offset:2px}
         if (o){ h.name=o[0]; h.target=o[1]; h.unit=o[2]; } else { h.target=0; h.unit=""; }
       }
       if (typeof h.unit!=="string") h.unit="";
-      if (typeof h.shape!=="number" || used.has(h.shape)) h.shape = freeShape(used);
+      if (typeof h.shape!=="number" || (used.has(h.shape) && used.size<SHAPE_COUNT)) h.shape = freeShape(used);
       used.add(h.shape);
     });
     return s;
   }
-  function freeShape(used){ for (let i=0;i<SHAPE_COUNT;i++) if (!used.has(i)) return i; return 0; }
+  // 10 tadan ko'p ish bo'lsa, shakllar takrorlanadi
+  function freeShape(used){ for (let i=0;i<SHAPE_COUNT;i++) if (!used.has(i)) return i; return Math.floor(Math.random()*SHAPE_COUNT); }
   function valid(s){ return s && typeof s.start==="string" && Array.isArray(s.habits) && s.marks && typeof s.marks==="object"; }
 
   let state = null;
@@ -377,11 +442,43 @@ label.btn:focus-within{outline:2px solid var(--focus);outline-offset:2px}
   let docRef=null, saveTimer=null, writing=false, dirty=false, lastRemote="";
   function persistLocal(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
   function changed(opts){
-    persistLocal(); render(opts);
+    record(opts && opts.merge);
+    persistLocal(); render(opts); queueSave();
+  }
+  function queueSave(){
     if (!docRef) return;
     dirty = true; clearTimeout(saveTimer); saveTimer = setTimeout(flush, 700);
     setSync("", "Saqlanmoqda…");
   }
+  /* ---------- bekor qilish / qaytarish ---------- */
+  const HISTORY_MAX = 100;
+  let past = [], future = [], snap = JSON.stringify(state), lastMerge = "", lastMergeAt = 0;
+  // ketma-ket yozish (bir xil maydon) bitta qadam hisoblanadi
+  function record(merge){
+    const now = JSON.stringify(state); if (now===snap) return;
+    const join = merge && merge===lastMerge && Date.now()-lastMergeAt < 2000;
+    if (!join){ past.push(snap); if (past.length>HISTORY_MAX) past.shift(); }
+    future = []; snap = now; lastMerge = merge || ""; lastMergeAt = Date.now();
+    historyButtons();
+  }
+  function resetHistory(){ past = []; future = []; snap = JSON.stringify(state); lastMerge = ""; historyButtons(); }
+  function historyButtons(){
+    document.getElementById("undoBtn").disabled = !past.length;
+    document.getElementById("redoBtn").disabled = !future.length;
+  }
+  function travel(from, to){
+    record();
+    if (!from.length) return;
+    to.push(snap); snap = from.pop(); lastMerge = "";
+    state = JSON.parse(snap);
+    if (document.activeElement && document.activeElement.tagName==="INPUT") document.activeElement.blur();
+    DAYS = state.days; selected = Math.min(selected, maxSelectable()); settingsSig = "";
+    persistLocal(); render(); queueSave(); historyButtons();
+  }
+  const undo = () => travel(past, future);
+  const redo = () => travel(future, past);
+  // Firebase kalit tartibini o'zgartirishi mumkin, shuning uchun tartiblab solishtiramiz
+  const canon = v => JSON.stringify(v, (k,x) => x && typeof x==="object" && !Array.isArray(x) ? Object.keys(x).sort().reduce((o,key) => (o[key]=x[key], o), {}) : x);
   async function flush(){
     if (!docRef || writing || !dirty) return;
     writing = true; dirty = false;
@@ -407,7 +504,9 @@ label.btn:focus-within{outline:2px solid var(--focus);outline-offset:2px}
           const data = snap.data(), str = JSON.stringify(data);
           if (valid(data) && str !== lastRemote && !dirty && !writing && !typing()){
             lastRemote = str;
-            state = normalize(JSON.parse(str));
+            const next = normalize(JSON.parse(str)), differs = canon(next) !== canon(state);
+            state = next;
+            if (differs) resetHistory();
             persistLocal();
             selected = Math.min(selected, maxSelectable());
             render();
@@ -450,7 +549,7 @@ label.btn:focus-within{outline:2px solid var(--focus);outline-offset:2px}
     if (v!==undefined && !isFinite(v)) return;
     if (v===undefined) setDay(n,h,undefined,undefined);
     else setDay(n,h, v>=h.target ? 1 : v===0 ? 0 : undefined, v);
-    changed(full ? undefined : {keepInputs:true});
+    changed({keepInputs:!full, merge:"amt-"+n+"-"+h.id});
   }
 
   /* ---------- chizish ---------- */
@@ -480,7 +579,7 @@ label.btn:focus-within{outline:2px solid var(--focus);outline-offset:2px}
 
     renderSheet();
     if (opts.keepInputs) refreshHabitLabels(); else renderHabits();
-    renderDonut(); renderShapes(); renderStats(); renderTrend(); renderHistory(); renderSettings();
+    renderDonut(); renderShapes(); renderStats(); renderTrend(); renderHistory(); renderSettings(); renderPlans();
     if (firstRender){ firstRender=false; scrollToDay(selected); }
   }
 
@@ -676,6 +775,58 @@ label.btn:focus-within{outline:2px solid var(--focus);outline-offset:2px}
     state.days = n; DAYS = n; selected = maxSelectable(); changed(); scrollToDay(selected);
   }
 
+  /* ---------- bir nechta reja ---------- */
+  const MAX_PLANS = 10;
+  function allPlans(){
+    const {others, pos, ...current} = state;
+    const list = others.slice(); list.splice(pos, 0, current);
+    return list;
+  }
+  function usePlans(list, i){ state = Object.assign({}, list[i], {others: list.filter((p,k) => k!==i), pos: i}); }
+  function showPlan(){
+    DAYS = state.days; selected = maxSelectable(); settingsSig = "";
+    ["confirmBox","delPlanBox"].forEach(id => document.getElementById(id).hidden = true);
+  }
+  function renderPlans(){
+    const list = allPlans();
+    document.getElementById("planChips").innerHTML = list.map((p,i) =>
+      '<button class="chip'+(i===state.pos?" on":"")+'" data-plan="'+i+'" aria-pressed="'+(i===state.pos)+'">'+esc(p.name)+'</button>').join("") +
+      (list.length<MAX_PLANS ? '<button class="btn" data-new>+ Yangi reja</button>' : '');
+    const pn = document.getElementById("planName"); if (document.activeElement!==pn) pn.value = state.name;
+    document.getElementById("delPlanBtn").disabled = list.length<=1;
+  }
+  document.getElementById("planChips").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    const list = allPlans();
+    if (b.hasAttribute("data-new")){
+      let k = list.length+1; while (list.some(p => p.name===k+"-reja")) k++;
+      list.push({name:k+"-reja", start:todayStr(), habits:[{id:uid(), name:"Yangi ish", target:0, unit:"", shape:0}], marks:{}, amounts:{}, days:30});
+      record(); usePlans(list, list.length-1); showPlan(); changed(); scrollToDay(selected);
+      const pn = document.getElementById("planName"); pn.scrollIntoView({block:"center"}); pn.focus(); pn.select();
+      return;
+    }
+    const i = Number(b.dataset.plan); if (i===state.pos) return;
+    // reja almashtirish "bekor qilish" qadami hisoblanmaydi
+    record(); usePlans(list, i); showPlan();
+    snap = JSON.stringify(state); future = []; lastMerge = ""; historyButtons();
+    persistLocal(); render(); queueSave(); scrollToDay(selected);
+  });
+  document.getElementById("planName").addEventListener("input", e => {
+    state.name = e.target.value.trim() || "Nomsiz reja";
+    changed({merge:"plan-name-"+state.pos});
+  });
+  const delPlanBox = document.getElementById("delPlanBox");
+  document.getElementById("delPlanBtn").onclick = () => {
+    document.getElementById("delPlanText").textContent = "\""+state.name+"\" rejasi va uning barcha belgilari o'chadi. Davom etasizmi?";
+    delPlanBox.hidden = false;
+  };
+  document.getElementById("delPlanNo").onclick = () => { delPlanBox.hidden = true; };
+  document.getElementById("delPlanYes").onclick = () => {
+    const list = allPlans(); if (list.length<=1) return;
+    list.splice(state.pos, 1);
+    usePlans(list, Math.max(0, state.pos-1)); showPlan(); changed(); scrollToDay(selected);
+  };
+
   /* ---------- hodisalar ---------- */
   document.getElementById("sheet").addEventListener("click", e => {
     const c = e.target.closest(".cellbtn");
@@ -712,7 +863,7 @@ label.btn:focus-within{outline:2px solid var(--focus);outline-offset:2px}
     if (f==="name") h.name = v.trim() || "Nomsiz ish";
     else if (f==="unit") h.unit = v.trim();
     else { const t = Number(v.replace(",", ".")); h.target = isFinite(t) && t>0 ? t : 0; }
-    clearTimeout(setTimer); setTimer = setTimeout(changed, 400);
+    clearTimeout(setTimer); setTimer = setTimeout(() => changed({merge:"set-"+id+"-"+f}), 400);
   });
   sl.addEventListener("click", e => {
     const b = e.target.closest("[data-del]"); if (!b || state.habits.length<=1) return;
@@ -771,7 +922,7 @@ label.btn:focus-within{outline:2px solid var(--focus);outline-offset:2px}
         pendingImport = normalize(s);
         const marked = Object.keys(s.marks).length;
         document.getElementById("importText").textContent =
-          "Fayldagi reja: " + s.habits.length + " ta ish, " + pendingImport.days + " kunlik, belgilangan kunlar: " + marked + ". Hozirgi ma'lumotlar shu bilan almashtiriladi.";
+          "Faylda " + (s.others.length+1) + " ta reja. \"" + s.name + "\": " + s.habits.length + " ta ish, " + pendingImport.days + " kunlik, belgilangan kunlar: " + marked + ". Hozirgi barcha rejalar shu bilan almashtiriladi.";
         importConfirm.hidden = false; backupMsg.textContent = "";
       } catch(err){ backupMsg.textContent = "Bu fayl odatlar zaxirasi emas. \"Faylga saqlash\" bilan olingan .json faylni tanlang."; }
     };
@@ -795,6 +946,106 @@ label.btn:focus-within{outline:2px solid var(--focus);outline-offset:2px}
 
   let lastDay = todayStr();
   setInterval(() => { if (todayStr()!==lastDay && !typing()){ lastDay=todayStr(); selected=maxSelectable(); render(); scrollToDay(selected); } }, 60000);
+
+  /* ---------- Ctrl+Z / Ctrl+Y ---------- */
+  document.getElementById("undoBtn").onclick = undo;
+  document.getElementById("redoBtn").onclick = redo;
+  document.addEventListener("keydown", e => {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+    const z = e.code==="KeyZ", y = e.code==="KeyY";
+    if (!z && !y) return;
+    const a = document.activeElement;
+    // yozish maydonida brauzerning o'z Ctrl+Z si ishlaydi
+    if (a && a.tagName==="INPUT" && (a.type==="text" || a.type==="number")) return;
+    if (document.getElementById("viewPlan").hidden) return;
+    e.preventDefault();
+    if (y || e.shiftKey) redo(); else undo();
+  });
+
+  /* ---------- bo'limlar ---------- */
+  function showTab(timer){
+    document.getElementById("viewPlan").hidden = timer;
+    document.getElementById("viewTimer").hidden = !timer;
+    [["tabPlan",!timer],["tabTimer",timer]].forEach(([id,on]) => {
+      const b = document.getElementById(id); b.classList.toggle("on", on); b.setAttribute("aria-pressed", on);
+    });
+    if (!timer) scrollToDay(selected);
+  }
+  document.getElementById("tabPlan").onclick = () => showTab(false);
+  document.getElementById("tabTimer").onclick = () => showTab(true);
+
+  /* ---------- Pomodoro taymeri (reja ma'lumotidan alohida saqlanadi) ---------- */
+  const TIMER_KEY = "odatlar30.timer", ARC = 2*Math.PI*88;
+  let tm = {min:20, end:0, left:20*60000};
+  try { const p = JSON.parse(localStorage.getItem(TIMER_KEY)); if (p && [20,30,60].includes(p.min) && isFinite(p.end) && isFinite(p.left)) tm = p; } catch(e){}
+  let audio = null;
+  const saveTimerState = () => { try{ localStorage.setItem(TIMER_KEY, JSON.stringify(tm)); }catch(e){} };
+  const timeLeft = () => tm.end ? Math.max(0, tm.end - Date.now()) : tm.left;
+  /* taymer ishlayotganda ekran o'chmasin (brauzer ilova yashirilganda qulfni o'zi bekor qiladi) */
+  let lock = null, locking = false;
+  async function keepAwake(){
+    const note = document.getElementById("wakeNote");
+    if (!tm.end){ note.textContent = ""; if (lock){ const l = lock; lock = null; l.release().catch(()=>{}); } return; }
+    if (lock || locking || document.visibilityState!=="visible") return;
+    locking = true;
+    try {
+      const l = await navigator.wakeLock.request("screen");
+      lock = l; l.addEventListener("release", () => { if (lock===l) lock = null; });
+      note.textContent = "☀ Taymer ishlayotganda ekran yoniq turadi.";
+    } catch(e){ note.textContent = "Bu qurilmada ekranni yoniq ushlab bo'lmadi. Uyqu rejimini sozlamalardan uzaytiring."; }
+    locking = false;
+    if (!tm.end) keepAwake();
+  }
+  document.addEventListener("visibilitychange", keepAwake);
+  function beep(){
+    try{
+      if (audio){
+        audio.resume();
+        for (let i=0;i<6;i++){
+          const o = audio.createOscillator(), g = audio.createGain(), t = audio.currentTime + i*0.5;
+          o.frequency.value = i%2 ? 660 : 880;
+          g.gain.setValueAtTime(0.3, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.4);
+          o.connect(g); g.connect(audio.destination); o.start(t); o.stop(t+0.42);
+        }
+      }
+      if (navigator.vibrate) navigator.vibrate([300,150,300,150,300]);
+    }catch(e){}
+  }
+  function drawTimer(){
+    const ms = timeLeft(), sec = Math.ceil(ms/1000);
+    const text = pad(Math.floor(sec/60))+":"+pad(sec%60);
+    document.getElementById("timerText").textContent = text;
+    document.getElementById("timerArc").setAttribute("stroke-dasharray", (ARC*ms/(tm.min*60000))+" "+ARC);
+    document.getElementById("timerArc").style.display = ms ? "" : "none";
+    document.getElementById("timerStart").textContent = tm.end ? "⏸ To'xtatish" : ms>0 && ms<tm.min*60000 ? "▶ Davom etish" : "▶ Boshlash";
+    document.getElementById("timerMsg").textContent = ms ? "" : "Vaqt tugadi! Biroz dam oling.";
+    document.getElementById("tabTimer").textContent = "⏱ Taymer" + (tm.end ? " · "+text : "");
+    document.querySelectorAll("#timerChips .chip").forEach(c => {
+      const on = Number(c.dataset.min)===tm.min; c.classList.toggle("on", on); c.setAttribute("aria-pressed", on);
+    });
+  }
+  function tick(){
+    if (tm.end && Date.now() >= tm.end){
+      tm.end = 0; tm.left = 0; saveTimerState(); beep(); showTab(true); keepAwake();
+    }
+    drawTimer();
+  }
+  document.getElementById("timerChips").addEventListener("click", e => {
+    const b = e.target.closest("[data-min]"); if (!b) return;
+    const min = Number(b.dataset.min);
+    tm = {min, end:0, left:min*60000}; saveTimerState(); drawTimer(); keepAwake();
+  });
+  document.getElementById("timerStart").onclick = () => {
+    // ovozga ruxsat faqat tugma bosilganda beriladi
+    try{ if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); }catch(e){}
+    if (tm.end){ tm.left = timeLeft(); tm.end = 0; }
+    else { if (!tm.left) tm.left = tm.min*60000; tm.end = Date.now() + tm.left; }
+    saveTimerState(); drawTimer(); keepAwake();
+  };
+  document.getElementById("timerReset").onclick = () => { tm.end = 0; tm.left = tm.min*60000; saveTimerState(); drawTimer(); keepAwake(); };
+  if (tm.end && Date.now() >= tm.end){ tm.end = 0; tm.left = 0; saveTimerState(); }
+  setInterval(tick, 250);
+  drawTimer(); keepAwake();
 
   render();
   connect();
